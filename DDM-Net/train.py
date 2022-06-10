@@ -990,7 +990,7 @@ def validate(
         save_predictions(predictions, args, epoch, output_dir)
 
         with open(
-            "../data/k400_mr345_val_min_change_duration0.3.pkl",
+            "data/k400_mr345_val_min_change_duration0.3.pkl",
             "rb",
         ) as f:
             gt_dict = pickle.load(f, encoding="lartin1")
@@ -1163,7 +1163,7 @@ def save_predictions(predictions, args, epoch, output_dir):
         result[vid] = result_dict
 
     with open(
-        "../data/k400_mr345_val_min_change_duration0.3.pkl",
+        "data/k400_mr345_val_min_change_duration0.3.pkl",
         "rb",
     ) as f:
         gt_dict = pickle.load(f, encoding="lartin1")
