@@ -77,15 +77,13 @@ python DDM-Net/test.py \
 ## Citation
 If you find DDM-Net useful in your research, please cite us using the following entry:
 ```
-@inproceedings{ddm22cvpr,
-  author    = {Jiaqi Tang and
-               Zhaoyang Liu and
-               Chen Qian and
-               Wayne Wu and
-               Limin Wang},
-  title     = {Progressive Attention on Multi-Level Dense Difference Maps for Generic Event Boundary Detection},
-  booktitle = {{CVPR}},
-  year      = {2022}
+@InProceedings{Tang_2022_CVPR,
+    author    = {Tang, Jiaqi and Liu, Zhaoyang and Qian, Chen and Wu, Wayne and Wang, Limin},
+    title     = {Progressive Attention on Multi-Level Dense Difference Maps for Generic Event Boundary Detection},
+    booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+    month     = {June},
+    year      = {2022},
+    pages     = {3355-3364}
 }
 ```
 
