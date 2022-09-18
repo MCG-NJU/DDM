@@ -269,23 +269,26 @@ class TaposGEBDMulFrames(Dataset):
     def __init__(
         self,
         mode="train",
-        dataroot="/PATH_TO/TAPOS/instances_frame256",
+        dataroot="PATH_TO/TAPOS_GEBD_frame",
         frames_per_side=5,
-        tmpl="image_{:05d}.jpg",
+        tmpl="img_{:05d}.png",
         transform=None,
+        seed=666,
         args=None,
     ):
-        assert mode.lower() in ["train", "val"], "Wrong mode for TAPOS"
+        assert mode.lower() in ["train", "val", "valnew", "test"], "Wrong mode for k400"
         self.mode = mode
+        self.split_folder = mode + "_" + "split"
         self.train = self.mode.lower() == "train"
         self.dataroot = dataroot
         self.frame_per_side = frames_per_side
         self.tmpl = tmpl
-        self.train_file = "multi-frames-TAPOS-train-{}.pkl".format(frames_per_side)
-        self.val_file = "multi-frames-TAPOS-val-{}.pkl".format(frames_per_side)
-        self.load_file = (
-            self.train_file if self.mode.lower() == "train" else self.val_file
-        )
+        # assert negtive_step > 0, f'negtive_step = {negtive_step} is illegal!'
+        # self.negtive_step = negtive_step
+        self.seed = seed
+        self.train_file = "multi-frames-TAPOS-GEBD-train-{}.pkl".format(frames_per_side)
+        self.val_file = "multi-frames-TAPOS-GEBD-{}-{}.pkl".format(mode, frames_per_side)
+        self.load_file = self.train_file if self.mode == "train" else self.val_file
         self.load_file_path = os.path.join("./DataAssets", self.load_file)
 
         if not (
@@ -294,10 +297,12 @@ class TaposGEBDMulFrames(Dataset):
             if (args is not None and args.rank == 0) or args is None:
                 print("Preparing pickle file ...")
                 self._prepare_pickle(
-                    anno_path="PATH_TO/TAPOS_{}_anno.pkl".format(mode),  # FIXME
+                    anno_path="../../data/k400_mr345_{}_min_change_duration0.3.pkl".format(
+                        mode
+                    ),
                     downsample=3,
                     min_change_dur=0.3,
-                    keep_rate=1.0,
+                    keep_rate=1,
                     load_file_path=self.load_file_path,
                 )
         if transform is not None:
@@ -308,36 +313,112 @@ class TaposGEBDMulFrames(Dataset):
         self.seqs = pickle.load(open(self.load_file_path, "rb"), encoding="lartin1")
         self.seqs = np.array(self.seqs, dtype=object)
 
+        self.labels_set = list(np.arange(args.num_classes))
         if self.mode == "train":
             self.train_labels = torch.LongTensor([dta["label"] for dta in self.seqs])
-        else:
+            self.label_to_indices = {
+                label: np.where(self.train_labels.numpy() == label)[0]
+                for label in self.labels_set
+            }
+            self.ratios = [
+                len(self.label_to_indices[0]) / len(self.label_to_indices[1]),
+                1,
+            ]
+        elif self.mode == "val":
             self.val_labels = torch.LongTensor([dta["label"] for dta in self.seqs])
+            self.label_to_indices = {
+                label: np.where(self.val_labels.numpy() == label)[0]
+                for label in self.labels_set
+            }
+        elif self.mode == "test":
+            self.test_labels = torch.LongTensor([dta["label"] for dta in self.seqs])
+            self.label_to_indices = {
+                label: np.where(self.test_labels.numpy() == label)[0]
+                for label in self.labels_set
+            }
+
+        self.img = None
+        self.mclient = None
+
+    def _get_training_samples(self, index):
+        indices = []
+        for class_ in self.labels_set:
+            real_index = self.label_to_indices[class_][int(index * self.ratios[class_])]
+            indices.append(real_index)
+        return indices
+
+    def _read_data(self, index, value):
+        item = self.seqs[index]
+        block_idx = item['block_idx']
+        folder = item['folder']
+        current_idx = item['current_idx']
+        # '''
+        
+        img = self.transform([pil_loader(
+            os.path.join(folder, self.tmpl.format(i)), value, self.mclient
+        ) for i in block_idx])
+        img = torch.stack(img, dim=0)
+        # '''
+        # print('img = ', img.shape)
+        # if self.img is None:
+        #     img = self.transform([pil_loader(
+        #         os.path.join(folder, self.tmpl.format(i))
+        #     ) for i in block_idx])
+        #     img = torch.stack(img, dim=0)
+        #     self.img = img
+        # else:
+        #     img = self.img
+        return img, item['label'], os.path.join(folder, self.tmpl.format(current_idx))
+
+    def _ensure_memcached(self):
+        if self.mclient is None:
+            #首先，指定服务器列表文件和配置文件的读取路径
+            server_list_config_file = "/mnt/lustre/share/memcached_client/server_list.conf"
+            client_config_file = "/mnt/lustre/share/memcached_client/client.conf"
+            #然后获取一个mc对象
+            self.mclient = mc.MemcachedClient.GetInstance(server_list_config_file, client_config_file)
+        return
 
     def __getitem__(self, index):
-        item = self.seqs[index]
-        block_idx = item["block_idx"]
-        folder = item["folder"]
-        current_idx = item["current_idx"]
-        img = self.transform(
-            [
-                pil_loader(os.path.join(self.dataroot, folder, self.tmpl.format(i)))
-                for i in block_idx
-            ]
-        )
-
-        img = torch.stack(img, dim=0)
+        self._ensure_memcached()
+        value = mc.pyvector()
+        if self.train:
+            indices = self._get_training_samples(index)
+            img_list = []
+            label_list = []
+            path_list = []
+            for real_index in indices:
+                img, label, img_path = self._read_data(real_index, value)
+                img_list.append(img)
+                label_list.append(label)
+                path_list.append(img_path)
+        else:
+            img, label, img_path = self._read_data(index, value)
+            img_list = [img, ]
+            label_list = [label, ]
+            path_list = [img_path, ]
+        # print('img2 = ', torch.stack(img_list, dim=0).shape)
         return {
-            "inp": img,
-            "label": item["label"],
-            "path": os.path.join(self.dataroot, folder, self.tmpl.format(current_idx)),
-        }
+            'inp': torch.stack(img_list, dim=0),
+            'label': torch.LongTensor(label_list),
+            'path': path_list
+        } 
+
+    def shuffle(self):
+        np.random.seed(self.seed)
+        for class_ in self.labels_set:
+            np.random.shuffle(self.label_to_indices[class_])
 
     def __len__(self):
-        return len(self.seqs)
+        if self.mode == "train":
+            return len(self.label_to_indices[1])
+        # from functools import reduce
+        # return reduce(sum, [len(v) for v in self.label_to_indices.values()])
+        return sum([len(v) for v in self.label_to_indices.values()])
 
     def _prepare_pickle(
         self,
-        anno_path="PATH_TO/TAPOS/save_output/TAPOS_train_anno.pkl",
+        anno_path="/PATH_TO/k400_mr345_train_min_change_duration0.3.pkl",
         downsample=3,
         min_change_dur=0.3,
         keep_rate=0.8,
@@ -348,15 +429,6 @@ class TaposGEBDMulFrames(Dataset):
         with open(anno_path, "rb") as f:
             dict_train_ann = pickle.load(f, encoding="lartin1")
 
-        # Some fields in anno for reference
-        # {'raw': {'action': 11, 'substages': [0, 79, 195], 'total_frames': 195, 'shot_timestamps': [43.36, 53.48], 'subset': 'train'},
-        # 'path': 'yMK2zxDDs2A/s00004_0_100_7_931',
-        # 'myfps': 25.0,
-        # 'my_num_frames': 197,
-        # 'my_duration': 7.88,
-        # 'my_substages_frameidx': [79]
-        # }
-
         # downsample factor: sample one every `ds` frames
         ds = downsample
 
@@ -365,14 +437,21 @@ class TaposGEBDMulFrames(Dataset):
         pos = 0
 
         for vname in dict_train_ann.keys():
-            vdict = dict_train_ann[vname]
+            if not osp.exists(osp.join(self.dataroot, vname)):
+                continue
 
-            vlen = vdict["my_num_frames"]
-            fps = vdict["myfps"]
-            path_frame = vdict["path"]
+            vdict = dict_train_ann[vname]
+            vlen = vdict["num_frames"]
+            vlen = min(vlen, len(os.listdir(osp.join(self.dataroot, vname))))
+            fps = vdict["fps"]
+            f1_consis = vdict["f1_consis"]
+            path_frame = vdict["path_frame"]
+
+            cls, frame_folder = path_frame.split("/")[:2]
 
             # select the annotation with highest f1 score
-            change_idices = vdict["my_substages_frameidx"]
+            highest = np.argmax(f1_consis)
+            change_idices = vdict["substages_myframeidx"][highest]
 
             # (float)num of frames with min_change_dur/2
             half_dur_2_nframes = min_change_dur * fps / 2.0
@@ -395,6 +474,7 @@ class TaposGEBDMulFrames(Dataset):
                         GT.pop()  # pop '0'
                         GT.append(1)
                         break
+            # assert(len(selected_indices)==len(GT),'length frame indices is not equal to length GT.')
             assert len(selected_indices) == len(
                 GT
             ), "length frame indices is not equal to length GT."
@@ -413,7 +493,7 @@ class TaposGEBDMulFrames(Dataset):
                 block_idx[block_idx > vlen] = vlen
                 block_idx = block_idx.tolist()
 
-                record["folder"] = path_frame
+                record["folder"] = f"{cls}/{frame_folder}"
                 record["current_idx"] = current_idx
                 record["block_idx"] = block_idx
                 record["label"] = lbl
