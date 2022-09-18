@@ -152,7 +152,7 @@ def get_vid_from_path(args, path):
         vid = vid_dir[:11]
         return vid
     elif "tapos" in args.dataset.lower():
-        vid = "_".join(path.split("/")[-3:-1])
+        vid = path.split("/")[-2]
         return vid
     else:
         raise NotImplementedError
