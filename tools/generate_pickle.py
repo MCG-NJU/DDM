@@ -137,7 +137,7 @@ def generate_pickle(
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="extract optical flows")
+    parser = argparse.ArgumentParser(description="generate pickles")
     parser.add_argument(
         "--split",
         type=str,
