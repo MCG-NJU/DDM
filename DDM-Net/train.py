@@ -989,11 +989,18 @@ def validate(
 
         save_predictions(predictions, args, epoch, output_dir)
 
-        with open(
-            "data/k400_mr345_val_min_change_duration0.3.pkl",
-            "rb",
-        ) as f:
-            gt_dict = pickle.load(f, encoding="lartin1")
+        if(args.dataset == 'kinetics_multiframes'):
+            with open(
+                "data/k400_mr345_val_min_change_duration0.3.pkl",
+                "rb",
+            ) as f:
+                gt_dict = pickle.load(f, encoding="lartin1")
+        elif(args.dataset == 'tapos_multiframes'):
+             with open(
+                "data/TAPOS_val_anno.pkl",
+                "rb",
+            ) as f:
+                gt_dict = pickle.load(f, encoding="lartin1")
 
         if not os.path.exists(os.path.join(output_dir, args.bdy_scores_dir)):
             os.makedirs(os.path.join(output_dir, args.bdy_scores_dir))
