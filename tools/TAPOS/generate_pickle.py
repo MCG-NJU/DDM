@@ -34,7 +34,7 @@ def generate_test_pickle(root, frame_per_side=5, ds=3):
             record["label"] = 0
             SEQ.append(record)
 
-    pickle.dump(SEQ, open(f"multi-frames-GEBD-test-{frame_per_side}.pkl", "wb"))
+    pickle.dump(SEQ, open(f"multi-frames-TAPOS-GEBD-test-{frame_per_side}.pkl", "wb"))
 
 
 def generate_pickle(
@@ -47,7 +47,7 @@ def generate_pickle(
     keep_rate=1,
 ):
     frame_per_side = 5
-    load_file_path = f"multi-frames-GEBD-{split}-{frame_per_side}.pkl"
+    load_file_path = f"multi-frames-TAPOS-GEBD-{split}-{frame_per_side}.pkl"
 
     with open(anno_path, "rb") as f:
         dict_train_ann = pickle.load(f, encoding="lartin1")
