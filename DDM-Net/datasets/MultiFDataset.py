@@ -276,7 +276,7 @@ class TaposGEBDMulFrames(Dataset):
         seed=666,
         args=None,
     ):
-        assert mode.lower() in ["train", "val", "valnew", "test"], "Wrong mode for k400"
+        assert mode.lower() in ["train", "val"], "Wrong mode for TAPOS"
         self.mode = mode
         self.split_folder = mode + "_" + "split"
         self.train = self.mode.lower() == "train"
@@ -297,7 +297,7 @@ class TaposGEBDMulFrames(Dataset):
             if (args is not None and args.rank == 0) or args is None:
                 print("Preparing pickle file ...")
                 self._prepare_pickle(
-                    anno_path="../../data/k400_mr345_{}_min_change_duration0.3.pkl".format(
+                    anno_path="PATH_TO/TAPOS_{}_anno.pkl".format(
                         mode
                     ),
                     downsample=3,
@@ -338,7 +338,6 @@ class TaposGEBDMulFrames(Dataset):
             }
 
         self.img = None
-        self.mclient = None
 
     def _get_training_samples(self, index):
         indices = []
@@ -347,7 +346,7 @@ class TaposGEBDMulFrames(Dataset):
             indices.append(real_index)
         return indices
 
-    def _read_data(self, index, value):
+    def _read_data(self, index):
         item = self.seqs[index]
         block_idx = item['block_idx']
         folder = item['folder']
@@ -355,7 +354,7 @@ class TaposGEBDMulFrames(Dataset):
         # '''
         
         img = self.transform([pil_loader(
-            os.path.join(folder, self.tmpl.format(i)), value, self.mclient
+            os.path.join(folder, self.tmpl.format(i))
         ) for i in block_idx])
         img = torch.stack(img, dim=0)
         # '''
@@ -370,30 +369,19 @@ class TaposGEBDMulFrames(Dataset):
         #     img = self.img
         return img, item['label'], os.path.join(folder, self.tmpl.format(current_idx))
 
-    def _ensure_memcached(self):
-        if self.mclient is None:
-            #首先，指定服务器列表文件和配置文件的读取路径
-            server_list_config_file = "/mnt/lustre/share/memcached_client/server_list.conf"
-            client_config_file = "/mnt/lustre/share/memcached_client/client.conf"
-            #然后获取一个mc对象
-            self.mclient = mc.MemcachedClient.GetInstance(server_list_config_file, client_config_file)
-        return
-
     def __getitem__(self, index):
-        self._ensure_memcached()
-        value = mc.pyvector()
         if self.train:
             indices = self._get_training_samples(index)
             img_list = []
             label_list = []
             path_list = []
             for real_index in indices:
-                img, label, img_path = self._read_data(real_index, value)
+                img, label, img_path = self._read_data(real_index)
                 img_list.append(img)
                 label_list.append(label)
                 path_list.append(img_path)
         else:
-            img, label, img_path = self._read_data(index, value)
+            img, label, img_path = self._read_data(index)
             img_list = [img, ]
             label_list = [label, ]
             path_list = [img_path, ]
@@ -418,7 +406,7 @@ class TaposGEBDMulFrames(Dataset):
 
     def _prepare_pickle(
         self,
-        anno_path="/PATH_TO/k400_mr345_train_min_change_duration0.3.pkl",
+        anno_path="/PATH_TO/TAPOS/save_output/TAPOS_train_anno.pkl",
         downsample=3,
         min_change_dur=0.3,
         keep_rate=0.8,
@@ -428,7 +416,16 @@ class TaposGEBDMulFrames(Dataset):
         # dict_train_ann
         with open(anno_path, "rb") as f:
             dict_train_ann = pickle.load(f, encoding="lartin1")
-
+        
+        # Some fields in anno for reference
+        # {'raw': {'action': 11, 'substages': [0, 79, 195], 'total_frames': 195, 'shot_timestamps': [43.36, 53.48], 'subset': 'train'},
+        # 'path': 'yMK2zxDDs2A/s00004_0_100_7_931',
+        # 'myfps': 25.0,
+        # 'my_num_frames': 197,
+        # 'my_duration': 7.88,
+        # 'my_substages_frameidx': [79]
+        # }
+        
         # downsample factor: sample one every `ds` frames
         ds = downsample
 
