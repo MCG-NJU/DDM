@@ -438,17 +438,12 @@ class TaposGEBDMulFrames(Dataset):
                 continue
 
             vdict = dict_train_ann[vname]
-            vlen = vdict["num_frames"]
+            vlen = vdict["my_num_frames"]
             vlen = min(vlen, len(os.listdir(osp.join(self.dataroot, vname))))
-            fps = vdict["fps"]
-            f1_consis = vdict["f1_consis"]
-            path_frame = vdict["path_frame"]
+            fps = vdict["myfps"]
+            path_frame = vdict["path"]
 
-            cls, frame_folder = path_frame.split("/")[:2]
-
-            # select the annotation with highest f1 score
-            highest = np.argmax(f1_consis)
-            change_idices = vdict["substages_myframeidx"][highest]
+            change_idices = vdict["my_substages_frameidx"]
 
             # (float)num of frames with min_change_dur/2
             half_dur_2_nframes = min_change_dur * fps / 2.0
@@ -490,7 +485,7 @@ class TaposGEBDMulFrames(Dataset):
                 block_idx[block_idx > vlen] = vlen
                 block_idx = block_idx.tolist()
 
-                record["folder"] = f"{cls}/{frame_folder}"
+                record["folder"] = path_frame
                 record["current_idx"] = current_idx
                 record["block_idx"] = block_idx
                 record["label"] = lbl
