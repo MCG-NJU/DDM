@@ -1,0 +1,22 @@
+srun -p pat_pluto --mpi=pmi2 --gres=gpu:2 -n4 --ntasks-per-node=2 --cpus-per-task 8 --job-name=train --kill-on-bad-exit=1 python DDM-Net/train.py \
+--dataset tapos_multiframes \
+--train-split train \
+--val-split val \
+--num-classes 2 \
+--batch-size 16 \
+--n-sample-classes 2 \
+--n-samples 16 \
+--lr 0.00001 \
+--warmup-epochs 0 \
+--epochs 15 \
+--decay-epochs 5 \
+--model multiframes_resnet \
+--pin-memory \
+--sync-bn \
+--amp \
+--native-amp \
+--distributed \
+--eval-metric loss \
+--log-interval 50 \
+--port 16580 \
+--eval-freq 1
