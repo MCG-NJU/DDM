@@ -58,10 +58,9 @@ if __name__ == "__main__":
         gt_dict = pickle.load(f, encoding="lartin1")
     
     nms_result = {}
-    cnt = 0
+    
     for vid in predictions:
         if vid in gt_dict:
-            cnt += 1
             # detect boundaries, convert frame_idx to timestamps
             fps = gt_dict[vid]["myfps"]
             det_t = (
