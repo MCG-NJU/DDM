@@ -1320,12 +1320,10 @@ def save_predictions(predictions, args, epoch, output_dir):
                 det_t = (
                     np.array(
                         get_idx_from_score_by_threshold(
-                            scope=args.scope,
-                            threshold=args.threshold,
-                            begin_ignore=args.begin_ignore,
-                            end_ignore=args.end_ignore,
-                            seq_indices=predictions[vid]["frame_idx"],
-                            seq_scores=predictions[vid]["scores"],
+                            scope=11,
+                            threshold=0.48,
+                            seq_indices=result[vid]["frame_idx"],
+                            seq_scores=result[vid]["scores"],
                         )
                     )
                 )
