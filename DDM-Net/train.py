@@ -1319,7 +1319,7 @@ def save_predictions(predictions, args, epoch, output_dir):
                 fps = gt_dict[vid]["myfps"]
                 det_t = (
                     np.array(
-                        get_boundary_idx_per_video(
+                        get_idx_from_score_by_threshold(
                             scope=args.scope,
                             threshold=args.threshold,
                             begin_ignore=args.begin_ignore,
