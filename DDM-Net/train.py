@@ -1275,12 +1275,18 @@ def save_predictions(predictions, args, epoch, output_dir):
             result_dict["frame_idx"].append(key)
             result_dict["scores"].append(info[key])
         result[vid] = result_dict
-
-    with open(
-        "data/k400_mr345_val_min_change_duration0.3.pkl",
-        "rb",
-    ) as f:
-        gt_dict = pickle.load(f, encoding="lartin1")
+    if(args.dataset == 'kinetics_multiframes'):
+        with open(
+            "data/k400_mr345_val_min_change_duration0.3.pkl",
+            "rb",
+        ) as f:
+            gt_dict = pickle.load(f, encoding="lartin1")
+    elif(args.dataset == 'tapos_multiframes'):
+        with open(
+            "data/TAPOS_val_anno.pkl",
+            "rb",
+        ) as f:
+            gt_dict = pickle.load(f, encoding="lartin1")
 
     filename = os.path.join(output_dir, "epoch_" + str(epoch) + ".pkl")
     print(filename)
