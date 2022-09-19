@@ -1155,9 +1155,9 @@ def eval_F1(gt_dict, pred_dict):
     return prec, rec, f1
 
 
-def eval_TAPOS_F1(gt_dict, pred_dict, threshold):
+def eval_TAPOS_F1(gt_dict, pred_dict):
     # recall precision f1 for threshold 0.05(5%)
-    # threshold = 0.05
+    threshold = 0.05
     tp_all = 0
     num_pos_all = 0
     num_det_all = 0
