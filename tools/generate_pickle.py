@@ -20,8 +20,8 @@ def generate_test_pickle(root, frame_per_side=5, ds=3):
 
         for current_idx in selected_indices:
             record = dict()
-            shift = np.arange(-frame_per_side, frame_per_side)
-            shift[shift >= 0] += 1
+            shift = np.arange(-frame_per_side, frame_per_side + 1)
+            
             shift = shift * ds
             block_idx = shift + current_idx
             block_idx[block_idx < 1] = 1
@@ -108,8 +108,8 @@ def generate_pickle(
                 continue
 
             record = dict()
-            shift = np.arange(-frame_per_side, frame_per_side)
-            shift[shift >= 0] += 1
+            shift = np.arange(-frame_per_side, frame_per_side + 1)
+  
             shift = shift * ds
             block_idx = shift + current_idx
             block_idx[block_idx < 1] = 1
